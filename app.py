@@ -17,13 +17,15 @@ import sqlite3
 import ssl
 import tempfile
 import time
+import urllib.error
+import urllib.request
 import uuid
 import warnings
 import zipfile
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
-from urllib.parse import parse_qsl, unquote, urlsplit
+from urllib.parse import parse_qsl, quote, unquote, urlsplit
 
 import click
 from dotenv import load_dotenv
@@ -38,13 +40,31 @@ from werkzeug.security import check_password_hash, generate_password_hash
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-# Database and uploaded certificates live in DATA_DIR, OUTSIDE the code.
-# Updating the code never touches this folder.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET") or "certificate-uploads"
+SUPABASE_STORAGE_ENABLED = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+IS_VERCEL = os.environ.get("VERCEL") == "1"
+if any((SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)) and not SUPABASE_STORAGE_ENABLED:
+    raise RuntimeError("Set both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to enable Supabase Storage.")
+if IS_VERCEL:
+    missing = []
+    if not DATABASE_URL:
+        missing.append("DATABASE_URL")
+    if not SUPABASE_STORAGE_ENABLED:
+        missing.extend(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+    if not os.environ.get("SECRET_KEY"):
+        missing.append("SECRET_KEY")
+    if missing:
+        raise RuntimeError("Vercel requires these environment variables: " + ", ".join(missing))
+# SQLite and local uploads live in DATA_DIR, outside the code.
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data")).resolve()
 UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "portfolio.db"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+if not DATABASE_URL:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+if not SUPABASE_STORAGE_ENABLED:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 def parse_list_setting(value, default):
     if value is None:
@@ -135,7 +155,7 @@ app.config.update(
     MAX_CONTENT_LENGTH=MAX_UPLOAD_MB * 1024 * 1024,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "0") == "1",
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "1" if IS_VERCEL else "0") == "1",
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
 )
 
@@ -145,7 +165,10 @@ def load_secret_key():
     key = os.environ.get("SECRET_KEY")
     if key:
         return key
+    if IS_VERCEL:
+        raise RuntimeError("Set SECRET_KEY in the Vercel project environment variables.")
     key_file = DATA_DIR / ".secret_key"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     if not key_file.exists():
         key_file.write_text(secrets.token_hex(32))
     return key_file.read_text().strip()
@@ -468,6 +491,45 @@ def get_counts():
     }
 
 
+def supabase_storage_request(method, filename, data=None, content_type=None):
+    bucket = quote(SUPABASE_STORAGE_BUCKET, safe="")
+    object_name = quote(Path(filename).name, safe="")
+    if method == "DELETE":
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}"
+        data = json.dumps({"prefixes": [Path(filename).name]}).encode("utf-8")
+        content_type = "application/json"
+    else:
+        url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{object_name}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    }
+    if content_type:
+        headers["Content-Type"] = content_type
+    if method == "POST":
+        headers["x-upsert"] = "false"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:300]
+        raise RuntimeError(
+            f"Supabase Storage {method} failed with HTTP {exc.code}: {detail}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Supabase Storage {method} request failed: {exc.reason}") from exc
+
+
+def read_upload(filename):
+    if SUPABASE_STORAGE_ENABLED:
+        return supabase_storage_request("GET", filename)
+    file_path = UPLOAD_DIR / Path(filename).name
+    if not file_path.is_file():
+        raise FileNotFoundError(filename)
+    return file_path.read_bytes()
+
+
 def save_upload(file_storage):
     """Validate the type AND the real file content, then store under a random name."""
     name = file_storage.filename or ""
@@ -481,12 +543,20 @@ def save_upload(file_storage):
     if not head.startswith(signatures[ext]):
         raise ValueError("That file's content does not match its type. Upload a real PDF, JPG or PNG.")
     filename = f"{uuid.uuid4().hex}.{ext}"
-    file_storage.save(UPLOAD_DIR / filename)
+    if SUPABASE_STORAGE_ENABLED:
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        supabase_storage_request("POST", filename, file_storage.stream.read(), content_type)
+    else:
+        file_storage.stream.seek(0)
+        file_storage.save(UPLOAD_DIR / filename)
     return filename
 
 
 def remove_file(filename):
     if not filename:
+        return
+    if SUPABASE_STORAGE_ENABLED:
+        supabase_storage_request("DELETE", filename)
         return
     target = UPLOAD_DIR / Path(filename).name
     for attempt in range(6):
@@ -619,11 +689,12 @@ def profile_photo():
     filename = get_site_profile().get("photo", "")
     if not filename or Path(filename).name != filename:
         abort(404)
-    photo_path = UPLOAD_DIR / filename
-    if not photo_path.is_file():
+    try:
+        data = read_upload(filename)
+    except FileNotFoundError:
         abort(404)
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    return send_file(io.BytesIO(photo_path.read_bytes()), mimetype=mime)
+    return send_file(io.BytesIO(data), mimetype=mime)
 
 
 @app.route("/about")
@@ -664,10 +735,10 @@ def uploaded_file(filename):
                            (filename,)).fetchone()
     if row is None:
         abort(404)
-    file_path = UPLOAD_DIR / filename
-    if not file_path.exists():
+    try:
+        data = read_upload(filename)
+    except FileNotFoundError:
         abort(404)
-    data = file_path.read_bytes()
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     if request.args.get("download"):
         ext = filename.rsplit(".", 1)[-1]
@@ -951,9 +1022,20 @@ def admin_backup():
                     src.close()
                     dst.close()
                 z.write(snap, "portfolio.db")
-        for p in UPLOAD_DIR.iterdir():
-            if p.is_file():
-                z.write(p, f"uploads/{p.name}")
+        if SUPABASE_STORAGE_ENABLED:
+            filenames = {
+                row["file_path"]
+                for row in get_db().execute("SELECT file_path FROM certificates").fetchall()
+            }
+            photo = get_site_profile().get("photo", "")
+            if photo:
+                filenames.add(photo)
+            for filename in filenames:
+                z.writestr(f"uploads/{Path(filename).name}", read_upload(filename))
+        else:
+            for p in UPLOAD_DIR.iterdir():
+                if p.is_file():
+                    z.write(p, f"uploads/{p.name}")
     buf.seek(0)
     return send_file(buf, mimetype="application/zip", as_attachment=True,
                      download_name=f"portfolio-backup-{datetime.now():%Y-%m-%d}.zip")
