@@ -1,0 +1,19 @@
+{% macro card(c) %}
+<button type="button" class="cert" data-cert="{{ c.id }}" id="card-{{ c.id }}">
+  <span class="cert-thumb{% if c.is_pdf %} is-pdf{% endif %}">
+    {% if c.is_pdf %}
+      <svg viewBox="0 0 48 60" width="44" height="56" aria-hidden="true"><path d="M4 2h28l12 12v44H4z" fill="#fff" stroke="#2f8066" stroke-width="2"/><path d="M32 2v12h12" fill="#e6f1e9" stroke="#2f8066" stroke-width="2"/><path d="M11 28h26M11 36h26M11 44h16" stroke="#8ab59d" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <span class="cert-type">PDF</span>
+    {% else %}
+      <img src="{{ c.file_url }}" alt="" loading="lazy">
+    {% endif %}
+    {% if c.is_featured %}<span class="cert-flag">Featured</span>{% endif %}
+  </span>
+  <span class="cert-body">
+    <span class="cert-cat">{{ c.category }}</span>
+    <span class="cert-title">{{ c.title }}</span>
+    <span class="cert-issuer">{{ c.issuer }}</span>
+    <span class="cert-date">{{ c.date_display }}{% if c.duration %}, {{ c.duration }}{% endif %}</span>
+  </span>
+</button>
+{% endmacro %}

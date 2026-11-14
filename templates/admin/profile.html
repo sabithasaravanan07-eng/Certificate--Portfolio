@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Edit website profile | {{ site.name }}{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="block"><div class="wrap auth">
+  <h1>Edit website profile</h1>
+  <p class="muted">Update the details visitors see on your Home and About pages. Changes are saved for future visits.</p>
+  {% if errors %}<div class="alert" role="alert"><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>Website and homepage</h2>
+    <label>Website name <input name="name" maxlength="120" value="{{ form.name }}" required></label>
+    <label>Your name <input name="owner" maxlength="100" value="{{ form.owner }}" required></label>
+    <label>Homepage heading <input name="tagline" maxlength="180" value="{{ form.tagline }}" required></label>
+    <label>Homepage introduction <textarea name="intro" rows="4" maxlength="2000">{{ form.intro }}</textarea></label>
+    <label>Website description <span class="hint">Used by search engines and link previews</span><textarea name="description" rows="3" maxlength="500">{{ form.description }}</textarea></label>
+
+    <h2>About page</h2>
+    <label>About me <textarea name="about" rows="4" maxlength="2000">{{ form.about }}</textarea></label>
+    <label>How I learn / what I focus on <textarea name="focus" rows="4" maxlength="2000">{{ form.focus }}</textarea></label>
+    <label>Location <input name="location" maxlength="200" value="{{ form.location }}"></label>
+    <label>Education and courses <span class="hint">One item per line</span><textarea name="education" rows="4">{{ form.education_text }}</textarea></label>
+    <label>Skills and interests <span class="hint">Separate items with commas</span><textarea name="specialties" rows="3">{{ form.specialties_text }}</textarea></label>
+    <label>Achievements <span class="hint">One item per line</span><textarea name="highlights" rows="4">{{ form.highlights_text }}</textarea></label>
+    <label>Projects <span class="hint">One per line: project name | description | https://project-link</span><textarea name="projects" rows="5">{{ form.projects_text }}</textarea></label>
+
+    <h2>Profile photo and links</h2>
+    {% if site.photo %}
+    <p><img src="{{ url_for('profile_photo') }}" alt="Current profile photo" width="120"></p>
+    <label><input type="checkbox" name="remove_photo" value="1"> Remove current profile photo</label>
+    {% endif %}
+    <label>Upload a profile photo <span class="hint">JPG or PNG, up to 5 MB</span><input type="file" name="photo" accept=".jpg,.jpeg,.png,image/jpeg,image/png"></label>
+    <label>Email <input type="email" name="email" maxlength="254" value="{{ form.email }}"></label>
+    <label>LinkedIn URL <input type="url" name="linkedin" maxlength="500" value="{{ form.linkedin }}" placeholder="https://"></label>
+    <label>GitHub URL <input type="url" name="github" maxlength="500" value="{{ form.github }}" placeholder="https://"></label>
+    <label>Portfolio URL <input type="url" name="portfolio" maxlength="500" value="{{ form.portfolio }}" placeholder="https://"></label>
+
+    <p class="admin-links">
+      <button class="btn" type="submit">Save website profile</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin_dashboard') }}">Cancel</a>
+    </p>
+  </form>
+</div></section>
+{% endblock %}

@@ -1,0 +1,24 @@
+# Render Blueprint: web service + persistent disk (disks need a paid Render instance).
+services:
+  - type: web
+    name: sabitha-certificates
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2
+    disk:
+      name: portfolio-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: DATABASE_URL
+        sync: false
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

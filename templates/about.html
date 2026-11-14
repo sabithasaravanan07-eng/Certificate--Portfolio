@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}About {{ site.owner }} | {{ site.name }}{% endblock %}
+{% block description %}{{ site.about }}{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div class="wrap narrow">
+    <p class="eyebrow">A little more about me</p>
+    <h1>{{ site.owner }}</h1>
+    <p class="lede">{{ site.about }}</p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <div class="focus-wrap">
+      <article class="focus-summary">
+        <p class="eyebrow">How I learn</p>
+        <p class="lede dark">{{ site.focus }}</p>
+        {% if site.location %}
+        <p class="focus-location"><strong>Location:</strong> {{ site.location }}</p>
+        {% endif %}
+      </article>
+      {% if site.specialties %}
+      <article class="focus-skills">
+        <p class="eyebrow">Strengths and interests</p>
+        <ul class="skill-list">
+          {% for skill in site.specialties %}
+          <li>{{ skill }}</li>
+          {% endfor %}
+        </ul>
+      </article>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if site.education %}
+<section class="block alt">
+  <div class="wrap">
+    <p class="eyebrow">Education and courses</p>
+    <h2>What I’ve studied</h2>
+    <ul class="education-list">
+      {% for item in site.education %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+{% if site.projects %}
+<section class="block">
+  <div class="wrap">
+    <p class="eyebrow">Selected projects</p>
+    <h2>Things I’ve built</h2>
+    <div class="project-grid">
+      {% for project in site.projects %}
+      <article class="project-card">
+        <p class="project-type">Project {{ '%02d'|format(loop.index) }}</p>
+        <h3>{{ project.name }}</h3>
+        <p>{{ project.description }}</p>
+        <a href="{{ project.url }}" target="_blank" rel="noopener noreferrer">View project <span aria-hidden="true">&rarr;</span></a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if site.highlights %}
+<section class="block alt">
+  <div class="wrap">
+    <p class="eyebrow">Achievements and participation</p>
+    <h2>Learning beyond the classroom</h2>
+    <ul class="highlight-list">
+      {% for item in site.highlights %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+{% if site.email or site.linkedin or site.github or site.portfolio %}
+<section class="block">
+  <div class="wrap narrow">
+    <p class="eyebrow">Say hello</p>
+    <h2>Let’s connect</h2>
+    <ul class="contact-list">
+      {% if site.email %}<li><a href="mailto:{{ site.email }}">Email <span aria-hidden="true">&rarr;</span></a></li>{% endif %}
+      {% if site.linkedin %}<li><a href="{{ site.linkedin }}" target="_blank" rel="noopener noreferrer">LinkedIn <span aria-hidden="true">&rarr;</span></a></li>{% endif %}
+      {% if site.github %}<li><a href="{{ site.github }}" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">&rarr;</span></a></li>{% endif %}
+      {% if site.portfolio %}<li><a href="{{ site.portfolio }}" target="_blank" rel="noopener noreferrer">Personal portfolio <span aria-hidden="true">&rarr;</span></a></li>{% endif %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block title %}{{ title }} | {{ site.name }}{% endblock %}
+{% block description %}{{ blurb }} {{ site.owner }}'s certificate portfolio.{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div class="wrap">
+    <h1>{{ title }}</h1>
+    <p class="lede">{{ blurb }}</p>
+  </div>
+</section>
+<section class="block tight">
+  <div class="wrap">
+    <p class="result-count" aria-live="polite">{{ certs | length }} certificate{{ '' if certs | length == 1 else 's' }}</p>
+    {% if certs %}
+    <div class="grid">{% for c in certs %}{{ card(c) }}{% endfor %}</div>
+    {% elif filtered %}
+    <p class="empty">No certificates match these filters. <a href="{{ url_for('listing', slug=slug) }}">Clear the filters</a> to see everything in this section.</p>
+    {% else %}
+    <p class="empty">No certificates in this section yet.{% if is_admin %} <a href="{{ url_for('admin_new') }}">Add one</a>.{% endif %}</p>
+    {% endif %}
+  </div>
+</section>
+{% set certs_json = certs %}
+{% include "_preview.html" %}
+{% endblock %}

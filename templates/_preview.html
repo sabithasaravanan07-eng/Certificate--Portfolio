@@ -1,0 +1,29 @@
+<script type="application/json" id="cert-data">{{ certs_json | tojson }}</script>
+<dialog id="preview" class="preview" aria-labelledby="pv-title">
+  <div class="pv-head">
+    <div>
+      <p class="pv-cat" id="pv-cat"></p>
+      <h2 id="pv-title"></h2>
+    </div>
+    <button type="button" class="pv-close" data-close aria-label="Close preview">Close</button>
+  </div>
+  <div class="pv-grid">
+    <div class="pv-media" id="pv-media"></div>
+    <div class="pv-info">
+      <dl class="facts">
+        <div><dt>Issued by</dt><dd id="pv-issuer"></dd></div>
+        <div><dt>Completed</dt><dd id="pv-date"></dd></div>
+        <div id="pv-duration-row"><dt>Duration</dt><dd id="pv-duration"></dd></div>
+      </dl>
+      <div id="pv-skills-wrap"><p class="pv-label">Skills learned</p><ul class="chips" id="pv-skills"></ul></div>
+      <p id="pv-desc" class="pv-desc"></p>
+      <div class="pv-actions">
+        <a id="pv-download" class="btn" href="#">Download certificate</a>
+        <a id="pv-verify" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">Verify on issuer's site</a>
+        <button type="button" id="pv-share" class="btn btn-ghost">Share</button>
+        <a id="pv-open" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">Open in new tab</a>
+      </div>
+      <p id="pv-status" class="muted small" role="status"></p>
+    </div>
+  </div>
+</dialog>

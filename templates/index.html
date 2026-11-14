@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block content %}
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">Certificate portfolio</p>
+      <h1>{{ site.tagline }}</h1>
+      <p class="lede">{{ site.intro }}</p>
+      <div class="hero-actions">
+        <a class="btn" href="{{ url_for('about') }}">About me</a>
+      </div>
+    </div>
+    <figure class="portrait" aria-label="Portfolio owner">
+      {% if has_photo %}
+      <img src="{{ url_for('profile_photo') }}" alt="Photo of {{ site.owner }}">
+      {% else %}
+      <span class="portrait-orbit" aria-hidden="true"></span>
+      <span class="portrait-initial" aria-hidden="true">{{ site.owner[:1] }}</span>
+      <figcaption>{{ site.owner }}</figcaption>
+      {% endif %}
+    </figure>
+  </div>
+</section>
+
+{% for slug in ['major', 'workshops', 'courses', 'achievements'] %}
+{% if cert_groups[slug] %}
+<section class="block certificate-group">
+  <div class="wrap">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Certificate collection</p>
+        <h2>{{ sections[slug][0] }}</h2>
+        <p class="lede">{{ sections[slug][1] }}</p>
+      </div>
+    </div>
+    <div class="grid">
+      {% for cert in cert_groups[slug] %}{{ card(cert) }}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endfor %}
+
+{% if not certs %}
+<section class="block">
+  <div class="wrap">
+    <h2>Certificates</h2>
+    <p class="empty">Certificates will appear here once they’re added.{% if is_admin %} <a href="{{ url_for('admin_new') }}">Add your first certificate</a>.{% endif %}</p>
+  </div>
+</section>
+{% endif %}
+
+{% set certs_json = certs %}
+{% include "_preview.html" %}
+{% endblock %}

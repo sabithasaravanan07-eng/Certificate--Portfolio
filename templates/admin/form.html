@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if cert_id else 'Add' }} certificate | {{ site.name }}{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="page-head"><div class="wrap narrow">
+  <h1>{{ 'Edit certificate' if cert_id else 'Add certificate' }}</h1>
+</div></section>
+<section class="block tight"><div class="wrap narrow">
+  {% if errors %}<div class="alert" role="alert"><p>Fix these before saving:</p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Certificate title <input type="text" name="title" value="{{ form['title'] or '' }}" maxlength="200" required></label>
+    <label>Category
+      <select name="category" required>
+        {% for c in categories %}<option value="{{ c }}" {% if form['category'] == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Issuing organization <input type="text" name="issuer" value="{{ form['issuer'] or '' }}" maxlength="150" required></label>
+    <div class="two">
+      <label>Completion date <input type="date" name="completion_date" value="{{ form['completion_date'] or '' }}" required></label>
+      <label>Course duration <input type="text" name="duration" value="{{ form['duration'] or '' }}" maxlength="60" placeholder="e.g. 3 hours, 6 months"></label>
+    </div>
+    <label>Skills learned <span class="hint">Separate with commas</span>
+      <input type="text" name="skills" value="{{ form['skills'] or '' }}" maxlength="400" placeholder="Python, Flask, SQL"></label>
+    <label>Description <textarea name="description" rows="4" maxlength="2000">{{ form['description'] or '' }}</textarea></label>
+    <label>Certificate file (PDF, JPG, JPEG or PNG, up to {{ max_mb }} MB)
+      <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" {% if not cert_id %}required{% endif %}>
+      {% if current_file %}<span class="hint">Current file: <a href="{{ url_for('uploaded_file', filename=current_file) }}" target="_blank" rel="noopener noreferrer">view</a>. Choose a new file only if you want to replace it.</span>{% endif %}
+    </label>
+    <label>Official verification link <span class="hint">Optional</span>
+      <input type="url" name="verification_url" value="{{ form['verification_url'] or '' }}" maxlength="500" placeholder="https://"></label>
+    <label class="check"><input type="checkbox" name="is_featured" value="1" {% if form['is_featured'] %}checked{% endif %}> Highlight this certificate in its category</label>
+    <p class="admin-links">
+      <button class="btn" type="submit">{{ 'Save changes' if cert_id else 'Add certificate' }}</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin_list') }}">Cancel</a>
+    </p>
+  </form>
+</div></section>
+{% endblock %}

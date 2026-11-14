@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import card %}
+{% block title %}Dashboard | {{ site.name }}{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="page-head"><div class="wrap">
+  <h1>Dashboard</h1>
+  <p class="admin-links">
+    <a class="btn" href="{{ url_for('admin_new') }}">Add certificate</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin_list') }}">Manage certificates</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin_profile') }}">Edit website profile</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin_backup') }}">Download backup</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin_password') }}">Change password</a>
+    <form method="post" action="{{ url_for('admin_logout') }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Sign out</button></form>
+  </p>
+</div></section>
+<section class="block tight"><div class="wrap">
+  <div class="stats">
+    <p><strong>{{ counts.total }}</strong> total certificates</p>
+    <p><strong>{{ counts.major }}</strong> major certifications</p>
+    <p><strong>{{ counts.workshops }}</strong> masterclasses and workshops</p>
+    <p><strong>{{ counts.courses }}</strong> short-term courses</p>
+    <p><strong>{{ counts.achievements }}</strong> participation and achievements</p>
+  </div>
+  <h2>Recently added</h2>
+  {% if recent %}
+  <ul class="rows">{% for c in recent %}
+    <li><span><strong>{{ c.title }}</strong><br><span class="muted small">{{ c.category }}, {{ c.issuer }}</span></span>
+    <a href="{{ url_for('admin_edit', cid=c.id) }}">Edit</a></li>{% endfor %}
+  </ul>
+  {% else %}<p class="empty">Nothing here yet. <a href="{{ url_for('admin_new') }}">Add your first certificate</a>.</p>{% endif %}
+  <p class="muted small">Back up regularly. The backup includes your database and every uploaded certificate.</p>
+</div></section>
+{% endblock %}
