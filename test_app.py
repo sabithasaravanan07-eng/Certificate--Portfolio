@@ -1,9 +1,12 @@
 """End-to-end checks. Run:  python test_app.py
 Uses a temporary data folder, so your real database and certificates are never touched."""
 import base64, io, os, re, tempfile
+from unittest.mock import patch
+from werkzeug.datastructures import FileStorage
 
 tmp = tempfile.mkdtemp()
 os.environ.update(DATA_DIR=tmp, DATABASE_URL="", ADMIN_USERNAME="admin", ADMIN_PASSWORD="correct-horse-battery",
+                  SUPABASE_URL="", SUPABASE_SERVICE_ROLE_KEY="", VERCEL="",
                   SECRET_KEY="test-key", OWNER_FOCUS="I design and learn through practical projects.",
                   OWNER_ABOUT="I value curiosity, teamwork, and learning through practice.",
                   OWNER_EDUCATION="B.Tech in Information Technology — Example College, Full Stack certificate — Example",
@@ -216,6 +219,26 @@ bootstrap_hash = portfolio.sqlite3.connect(portfolio.DB_PATH).execute(
 ).fetchone()[0]
 check("admin bootstrap can safely rerun without duplicate usernames",
       portfolio.check_password_hash(bootstrap_hash, "second-bootstrap-password"))
+
+storage_calls = []
+storage_responses = [b'{"Key":"remote.png"}', PNG, b'{}']
+def fake_storage_request(req, timeout):
+    storage_calls.append(req)
+    return io.BytesIO(storage_responses.pop(0))
+
+with patch.object(portfolio, "SUPABASE_STORAGE_ENABLED", True), \
+     patch.object(portfolio, "SUPABASE_URL", "https://example.supabase.co"), \
+     patch.object(portfolio, "SUPABASE_SERVICE_ROLE_KEY", "test-service-key"), \
+     patch.object(portfolio, "SUPABASE_STORAGE_BUCKET", "certificate-uploads"), \
+     patch.object(portfolio.urllib.request, "urlopen", side_effect=fake_storage_request):
+    remote_name = portfolio.save_upload(FileStorage(stream=io.BytesIO(PNG), filename="remote.png"))
+    remote_contents = portfolio.read_upload(remote_name)
+    portfolio.remove_file(remote_name)
+check("Supabase uploads, reads and deletes objects through the Storage API",
+      remote_name.endswith(".png") and remote_contents == PNG
+      and [req.get_method() for req in storage_calls] == ["POST", "GET", "DELETE"]
+      and all("certificate-uploads" in req.full_url for req in storage_calls)
+      and storage_calls[0].get_header("Authorization") == "Bearer test-service-key")
 
 print(f"\n{sum(checks)}/{len(checks)} checks passed")
 raise SystemExit(0 if all(checks) else 1)
