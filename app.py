@@ -718,8 +718,8 @@ def listing(slug):
     ph = ",".join("?" * len(cats))
     db = get_db()
     issuers = [r[0] for r in db.execute(
-        f"SELECT DISTINCT issuer FROM certificates WHERE category IN ({ph}) "
-        "ORDER BY LOWER(issuer), issuer", cats)]
+        f"SELECT issuer FROM certificates WHERE category IN ({ph}) "
+        "GROUP BY issuer ORDER BY MIN(LOWER(issuer)), issuer", cats)]
     years = [r[0] for r in db.execute(
         f"SELECT DISTINCT substr(completion_date,1,4) y FROM certificates "
         f"WHERE category IN ({ph}) ORDER BY y DESC", cats)]
