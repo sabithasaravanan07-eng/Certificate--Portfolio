@@ -48,11 +48,25 @@ After signing in, use **Dashboard → Edit website profile** to update the homep
 
 Run the tests any time with `python test_app.py` (uses a temporary folder, never your real data).
 
-## Where your data lives, and why hosting matters
+## Where your data lives
 
-With local SQLite, the database and uploaded files are stored in `DATA_DIR` (default `./data`), kept **outside the code**. With Supabase configured, database records use Supabase PostgreSQL while uploaded certificate and profile image files remain in `DATA_DIR/uploads`. Updating the code never changes this folder.
+Locally, SQLite and uploaded files are stored in `DATA_DIR` (default `./data`). For serverless hosting, set `DATABASE_URL` to Supabase PostgreSQL and configure Supabase Storage; the database and uploaded files then persist outside the app. Keep the Supabase service-role key private.
 
-**Do not use Vercel for this app as written.** Vercel is serverless: its filesystem is temporary, so uploaded certificate files would disappear. Use a host with persistent file storage:
+### Deploy to Vercel
+
+Vercel detects the Flask app in `app.py`. Set the Vercel **Root Directory** to the folder containing `app.py` and `requirements.txt`, then add these environment variables in **Project Settings → Environment Variables**:
+
+- `DATABASE_URL`: Supabase **PostgreSQL** connection URI from **Project Settings → Database → Connect**. Use the session pooler URI if direct connections are unavailable.
+- `SUPABASE_URL`: project URL from **Project Settings → API**.
+- `SUPABASE_SERVICE_ROLE_KEY`: service-role key from **Project Settings → API Keys**. Never expose it in browser code or commit it.
+- `SUPABASE_STORAGE_BUCKET`: `certificate-uploads` (or the bucket name you create).
+- `SECRET_KEY`: a long, random value used to sign sessions.
+- `ADMIN_USERNAME` and `ADMIN_PASSWORD`: set on the first deploy to create the initial admin account; use a password of at least 10 characters.
+- `COOKIE_SECURE`: `1`.
+
+In Supabase Storage, create a **private** bucket named `certificate-uploads` (or use the exact name set above). The app uploads, downloads and deletes files through the server using the service-role key. Set the environment variables for Production (and Preview if needed), then redeploy. Vercel deployments require the database, storage bucket and secret key; startup reports a clear configuration error if they are missing.
+
+### Other hosting options
 
 **Option A: PythonAnywhere (has a free tier, persistent disk, permanent `yourname.pythonanywhere.com` URL)**
 1. Create an account, open a Bash console, `git clone` your GitHub repo.
